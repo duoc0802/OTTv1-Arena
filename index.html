@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OTT Arena – Code đấu code</title>
+<style>
+:root {
+  --paper: #fcfbfa; /* Nền tổng thể: Trắng kem rất nhạt, ấm và dịu mắt */
+  --ink: #1b2a47; /* Màu chữ chính: Xanh than (Navy) đậm, thay thế cho màu đen */
+  --muted: #546a87; /* Màu chữ phụ/chú thích: Xanh than nhạt, dễ đọc */
+  --line: #d1dae3; /* Viền mờ: Xanh xám nhạt */
+  
+  --red: #d6403a; --red-soft: #fadcd9; 
+  --blue: #2f64c8; --blue-soft: #d9e4fa;
+  
+  --board-a: #f7f4ed; /* Nền ô code, status, ô cờ: Trắng kem (Cream) */
+  --board-b: #eadfc8; /* Nền ô cờ xen kẽ: Màu kem đậm hơn một chút tạo ranh giới */
+  
+  --ok: #2c8a5a;
+  --ui: "Segoe UI","Helvetica Neue",Arial,sans-serif; 
+  --mono: ui-monospace,Consolas,Menlo,monospace;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 var(--ui)}
+header{padding:20px 28px 8px;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+h1{margin:0;font-size:26px;letter-spacing:-.02em}
+header p{margin:0;color:var(--muted)}
+main{display:grid;grid-template-columns:minmax(300px,1fr) minmax(340px,520px);gap:24px;padding:12px 28px 40px;max-width:1280px;margin:auto}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+section{min-width:0}
+h2{font-size:16px;margin:0 0 8px}
+textarea{width:100%;height:420px;resize:vertical;font:13px/1.45 var(--mono);color:var(--ink);background:var(--board-a);border:1px solid var(--line);border-radius:6px;padding:12px;tab-size:2}
+.row{display:flex;gap:10px;align-items:center;margin:10px 0;flex-wrap:wrap}
+input[type=text]{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--board-a);color:var(--ink);width:180px}
+select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--board-a);color:var(--ink);}
+button{font:inherit;font-weight:600;padding:9px 18px;border:0;border-radius:6px;background:var(--ink);color:var(--paper);cursor:pointer}
+button.secondary{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button:disabled{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+#status{padding:10px 12px;border-left:4px solid var(--line);background:var(--board-a);border-radius:0 6px 6px 0;min-height:44px}
+#status.queued{border-color:var(--blue)} #status.playing{border-color:var(--ok)} #status.error{border-color:var(--red)}
+.players{display:flex;justify-content:space-between;font-weight:600;margin:4px 0 8px}
+.players .r{color:var(--red)} .players .b{color:var(--blue)}
+#board{display:grid;grid-template-columns:repeat(9,1fr);aspect-ratio:1;border:2px solid var(--ink);border-radius:4px;overflow:hidden;background:var(--board-a)}
+.cell{position:relative;display:flex;align-items:center;justify-content:center;font-size:clamp(18px,4.2vw,30px);border:1px solid color-mix(in srgb,var(--line) 60%,transparent)}
+.cell:nth-child(2n){background:var(--board-b)}
+.cell.from{box-shadow:inset 0 0 0 3px #e0a21a}
+.cell.to{box-shadow:inset 0 0 0 3px #e0a21a;background:color-mix(in srgb,#e0a21a 22%,transparent)}
+
+/* Giao diện Chuồng (Base) */
+.cell.base-red { box-shadow: inset 0 0 0 4px var(--red); background: var(--red-soft); }
+.cell.base-blue { box-shadow: inset 0 0 0 4px var(--blue); background: var(--blue-soft); }
+
+.piece{width:82%;height:82%;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid; position: absolute;}
+.piece.RED{background:var(--red-soft);border-color:var(--red)}
+.piece.BLUE{background:var(--blue-soft);border-color:var(--blue)}
+#log{height:150px;overflow:auto;font:12px/1.5 var(--mono);background:var(--board-a);border:1px solid var(--line);border-radius:6px;padding:8px}
+.legend{color:var(--muted);font-size:13px}
+.result{font-weight:700;font-size:18px;margin:8px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>OTT Arena</h1>
+  <p>Hai người lạ, hai đoạn code. Bàn 9×9, Búa–Kéo–Bao, mỗi quân đi 1 ô theo 8 hướng. Đưa quân vào chuồng đối phương để thắng!</p>
+</header>
+<main>
+  <section aria-label="Soạn code">
+    <h2>Code của bạn</h2>
+    <textarea id="code" spellcheck="false" aria-label="Mã bot"></textarea>
+    <div class="row">
+      <select id="lang">
+        <option value="javascript">JavaScript</option>
+        <option value="python">Python</option>
+        <option value="cpp">C++</option>
+      </select>
+      <input id="name" type="text" maxlength="20" placeholder="Tên hiển thị" aria-label="Tên hiển thị">
+      <button id="btnFind">Tìm trận</button>
+      <button id="btnCancel" class="secondary" disabled>Hủy tìm trận</button>
+    </div>
+    <div id="status" role="status" aria-live="polite">Đang kết nối…</div>
+    <p class="legend">Định nghĩa <code>function move(state)</code> và trả về <code>{from:[r,c], to:[r,c]}</code> lấy từ <code>state.legalMoves</code>. Quá 1 giây, lỗi code hoặc nước sai = thua. Chi tiết trong README.</p>
+  </section>
+
+  <section aria-label="Bàn đấu">
+    <h2 id="matchTitle">Chưa có trận</h2>
+    <div class="players"><span class="r" id="pRed">RED</span><span id="turnInfo"></span><span class="b" id="pBlue">BLUE</span></div>
+    <div id="board" role="grid" aria-label="Bàn cờ 9x9"></div>
+    <div class="result" id="result"></div>
+    <div class="row"><span class="legend">✊ Búa thắng ✌️ Kéo · ✌️ Kéo thắng ✋ Bao · ✋ Bao thắng ✊ Búa. Quân cùng loại không ăn được nhau.</span></div>
+    <div id="log" aria-label="Nhật ký nước đi"></div>
+  </section>
+</main>
+
+<script>
+const DEFAULT_CODE = `// Bot mẫu: ưu tiên ăn quân, nếu không thì tiến về phía đối thủ.
+// state.you   : 'RED' | 'BLUE'
+// state.board : 9x9, mỗi ô null hoặc {owner:'me'|'enemy', type:'R'|'P'|'S'}
+// state.legalMoves : [{from:[r,c], to:[r,c], capture:boolean}, ...]
+function move(state) {
+  const moves = state.legalMoves;
+  const captures = moves.filter(m => m.capture);
+  if (captures.length) return captures[Math.floor(Math.random() * captures.length)];
+
+  // Khoảng cách tới quân địch gần nhất (Chebyshev) sau khi đi
+  const enemies = [];
+  state.board.forEach((row, r) => row.forEach((p, c) => { if (p && p.owner === 'enemy') enemies.push([r, c]); }));
+  const dist = (r, c) => Math.min(...enemies.map(([er, ec]) => Math.max(Math.abs(er - r), Math.abs(ec - c))));
+  let best = [], bestD = Infinity;
+  for (const m of moves) {
+    const d = dist(m.to[0], m.to[1]);
+    if (d < bestD) { bestD = d; best = [m]; } else if (d === bestD) best.push(m);
+  }
+  return best[Math.floor(Math.random() * best.length)];
+}`;
+const ICON = {R:'✊', P:'✋', S:'✌️'};
+const $ = (id) => document.getElementById(id);
+const HDR = {'Content-Type':'application/json','X-OTT-Request':'1'};
+let matchSrc = null, currentMatchId = null, mySide = null, lastMove = null, board = null;
+
+$('code').value = localStorage.getItem('ott.code') || DEFAULT_CODE;
+$('code').addEventListener('input', () => localStorage.setItem('ott.code', $('code').value));$('name').value = localStorage.getItem('ott.name') || '';
+
+function setStatus(text, cls=''){ const s=$('status'); s.textContent=text; s.className=cls; }
+
+function renderBoard(){
+  const el = $('board'); el.innerHTML = '';
+  for (let r=0;r<9;r++) for (let c=0;c<9;c++){
+    const d = document.createElement('div'); d.className='cell'; d.setAttribute('role','gridcell');
+    
+    // Đánh dấu chuồng Đỏ và Xanh
+    if (r === 0 && c === 8) d.classList.add('base-red');
+    if (r === 8 && c === 0) d.classList.add('base-blue');
+
+    if (lastMove){
+      if (lastMove.from[0]===r && lastMove.from[1]===c) d.classList.add('from');
+      if (lastMove.to[0]===r && lastMove.to[1]===c) d.classList.add('to');
+    }
+    const p = board && board[r][c];
+    if (p){ const e=document.createElement('div'); e.className='piece '+p.o; e.textContent=ICON[p.t]; e.title=p.o+' '+p.t; d.appendChild(e); }
+    el.appendChild(d);
+  }
+}
+
+const REASONS = {
+  ELIMINATION:'loại hết quân đối thủ',
+  NO_LEGAL_MOVES:'đối thủ hết nước đi',
+  MOVE_LIMIT:'hết giới hạn nước đi (nhiều quân hơn thắng, hòa thì RED thắng)',
+  ILLEGAL_MOVE:'đối thủ đi nước sai',
+  TIMEOUT:'đối thủ quá thời gian',
+  RUNTIME_ERROR:'code đối thủ bị lỗi',
+  REACHED_BASE:'đã đưa được quân vào chuồng đối phương'
+};
+
+function applyState(st){
+  board = st.board;
+  $('turnInfo').textContent = st.status==='PLAYING' ? `Lượt ${st.turn} · nước ${st.ply}` : '';
+  
+  if (st.status === 'FINISHED') {
+    const teamName = st.winner === 'RED' ? 'Đỏ (RED)' : (st.winner === 'BLUE' ? 'Xanh (BLUE)' : 'Hòa');
+    let you = '';
+    
+    if (mySide) {
+      if (st.winner === 'DRAW') {
+        you = ' – Trận đấu hòa!';
+      } else {
+        you = (st.winner === mySide) ? ' – Bạn thắng! 🎉' : ' – Bạn thua. 😢';
+      }
+    }
+    
+    const reasonText = REASONS[st.reason] || st.reason;
+    $('result').textContent = st.winner === 'DRAW' 
+        ? `Hòa: ${reasonText}${you}` 
+        : `${teamName} thắng: ${reasonText}${you}`;
+        
+    setStatus('Trận đã kết thúc. Sửa code và tìm trận mới.', '');
+    $('btnFind').disabled = false; 
+    $('btnCancel').disabled = true;
+    if ($('lang'))$('lang').disabled = false;
+  } else { 
+    $('result').textContent = ''; 
+  }
+  
+  renderBoard();
+}
+
+function log(t){ const l=$('log'); l.textContent += t+'\n'; l.scrollTop=l.scrollHeight; }
+
+function watch(matchId){
+  if (currentMatchId===matchId) return;
+  if (matchSrc) matchSrc.close();
+  currentMatchId = matchId; $('log').textContent=''; lastMove=null;
+  matchSrc = new EventSource(`/api/matches/${matchId}/stream`);
+  matchSrc.addEventListener('snapshot', (e)=>{
+    const m = JSON.parse(e.data); mySide = m.you;
+    $('matchTitle').textContent = `Trận #${m.id}` + (mySide ? ` – bạn là ${mySide}` : ' – đang xem');
+    $('pRed').textContent = 'RED: '+m.red; $('pBlue').textContent = 'BLUE: '+m.blue;
+    m.moves.forEach(mv=>log(`${mv.side} (${mv.from})→(${mv.to})${mv.capture?' ăn':''}`));
+    lastMove = m.moves[m.moves.length-1]||null;
+    applyState(m.state);
+    if (m.state.status==='PLAYING') setStatus('Trận đang diễn ra. Code của bạn đang tự thi đấu.', 'playing');
+  });
+  matchSrc.addEventListener('update', (e)=>{
+    const u = JSON.parse(e.data);
+    if (u.move){ lastMove=u.move; log(`${u.move.side} (${u.move.from})→(${u.move.to})${u.move.capture?' ăn':''}`); }
+    if (u.note) log('! '+u.note);
+    applyState(u.state);
+  });
+  matchSrc.onerror = ()=>{ /* EventSource tự reconnect; snapshot mới sẽ đồng bộ lại toàn bộ */ };
+}
+
+// --- session stream
+const es = new EventSource('/api/stream');
+es.addEventListener('status', (e)=>{
+  const s = JSON.parse(e.data);
+  if (s.name && !$('name').value)$('name').placeholder = s.name;
+  if (s.status==='QUEUED'){
+    setStatus(`Đang tìm đối thủ… (vị trí ${s.position} trong hàng chờ). Hãy mở tab ẩn danh khác để tự thử với 2 người.`, 'queued');
+    $('btnFind').disabled=true; $('btnCancel').disabled=false;
+  } else if (s.status==='IN_MATCH'){
+    mySide = s.side; setStatus('Đã ghép trận! Đang bắt đầu…', 'playing');
+    $('btnFind').disabled=true; $('btnCancel').disabled=true; watch(s.matchId);
+  } else {
+    $('btnFind').disabled=false; $('btnCancel').disabled=true;
+    if ($('status').className!=='error' && !$('result').textContent) setStatus('Sẵn sàng. Nhấn “Tìm trận” để nộp code.');
+  }
+});
+es.onerror = ()=> setStatus('Mất kết nối, đang kết nối lại…','error');
+
+$('btnFind').onclick = async ()=>{
+  // Lưu tên vào bộ nhớ tạm
+  localStorage.setItem('ott.name', $('name').value);
+  
+  // Khóa nút Tìm trận và menu Chọn ngôn ngữ để tránh spam click
+  $('btnFind').disabled = true; 
+  if ($('lang'))$('lang').disabled = true; 
+  
+  setStatus('Đang kiểm tra code…','queued');
+  
+  try {
+    const r = await fetch('/api/queue', {
+      method: 'POST',
+      headers: HDR,
+      body: JSON.stringify({
+        code: $('code').value,
+        name: $('name').value,
+        lang: $('lang').value
+      })
+    });
+    
+    const j = await r.json();
+    
+    // Xử lý nếu server báo lỗi
+    if (!r.ok) { 
+      setStatus(j.error || 'Lỗi', 'error'); 
+      $('btnFind').disabled = false; 
+      if ($('lang'))$('lang').disabled = false;
+    }
+    
+  } catch { 
+    // Xử lý nếu mất kết nối mạng
+    setStatus('Không gọi được máy chủ', 'error'); 
+    $('btnFind').disabled = false; 
+    if ($('lang'))$('lang').disabled = false;
+  }
+};
+
+$('btnCancel').onclick = async ()=>{$('btnCancel').disabled=true; setStatus('Đang hủy tìm trận…','queued');
+  const r = await fetch('/api/queue',{method:'DELETE',headers:HDR}); const j = await r.json();
+  if (j.status==='IN_MATCH'){ mySide=j.side; watch(j.matchId); }
+  else setStatus('Đã hủy. Sẵn sàng.');
+};
+
+// --- xem trận qua link #m=<id>
+const hash = location.hash.match(/m=([a-f0-9]+)/);
+if (hash) watch(hash[1]);
+renderBoard();
+</script>
+</body>
+</html>

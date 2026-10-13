@@ -1,0 +1,12 @@
+{
+  "name": "ott-arena",
+  "version": "1.0.0",
+  "description": "OTTv2 Arena - 2 người lạ được ghép ngẫu nhiên, code của họ tự đấu với nhau trên bàn cờ 9x9",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test.js"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}
